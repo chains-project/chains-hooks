@@ -1,0 +1,18 @@
+{
+  "name": "chains-project",
+  "description": "Supply-chain security tooling for coding agents from the chains research project",
+  "owner": {
+    "name": "chains-project",
+    "url": "https://github.com/chains-project"
+  },
+  "plugins": [
+    {
+      "name": "yul",
+      "source": {
+        "source": "github",
+        "repo": "chains-project/yul"
+      },
+      "description": "Dependency-freshness PreToolUse hook: blocks writes that pin outdated dependency versions"
+    }
+  ]
+}
