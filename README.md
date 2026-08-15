@@ -53,6 +53,22 @@ bash install.sh
 
 When a command is blocked the agent receives a clear message explaining why and what to do instead, so it can adjust its approach without stalling.
 
+## Claude Code plugin marketplace
+
+This repo also hosts the chains-project plugin marketplace for Claude Code (`.claude-plugin/marketplace.json`). Register it once:
+
+```
+/plugin marketplace add chains-project/chains-hooks
+```
+
+Then install any chains-project plugin from it, e.g. [yul](https://github.com/chains-project/yul), a `PreToolUse` hook that blocks the agent from pinning outdated dependency versions in manifests:
+
+```
+/plugin install yul@chains-project
+```
+
+New plugins added to the catalog show up for registered users via `/plugin marketplace update`.
+
 ## Installation
 
 **Dependencies:** `jq`, `semgrep`
