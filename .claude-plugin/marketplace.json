@@ -10,7 +10,8 @@
       "name": "yul",
       "source": {
         "source": "github",
-        "repo": "chains-project/yul"
+        "repo": "chains-project/yul",
+        "ref": "v0.0.1"
       },
       "description": "Dependency-freshness PreToolUse hook: blocks writes that pin outdated dependency versions"
     }
