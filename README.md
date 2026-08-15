@@ -69,6 +69,15 @@ Then install any chains-project plugin from it, e.g. [yul](https://github.com/ch
 
 New plugins added to the catalog show up for registered users via `/plugin marketplace update`.
 
+### Marketplace threat model
+
+The catalog is also a supply chain, so it applies the same discipline the hooks preach:
+
+- **Every plugin is pinned to an immutable release tag** (`ref` in `marketplace.json`). Users' Claude Code fetches exactly that commit of the plugin repo — never a moving branch. Plugin repos have immutable releases enabled, so a published tag can't be re-pointed and its binary assets can't be swapped after the fact.
+- **Pinning inside the plugin repo would not be enough.** A version field or checksum committed next to the plugin's code is moved by the same `git push` that ships malicious code — one compromised repo, and users get the update anyway. The pin has to live in a *different* trust domain: shipping anything to users requires both a release in the plugin repo *and* a pin-bump commit here, so this repo's history is a reviewable audit log of exactly what was distributed and when. Pin bumps arrive as PRs opened by the [`bump-yul` workflow](.github/workflows/bump-yul.yml); merging one is the deliberate human act of shipping.
+- **Users cannot pin a plugin version themselves.** `/plugin install` has no version syntax and `enabledPlugins` is a boolean — version selection is distribution-side by design, which is why the catalog pin above matters. A user who wants sovereignty anyway has two options: pin this marketplace itself (`"ref"` on the marketplace source in `extraKnownMarketplaces`), which freezes the catalog and everything it pins, or register a personal `marketplace.json` that lists the plugin with an exact `sha`.
+- **Updates are pull-based.** Nothing is pushed to users: their Claude Code periodically refreshes this catalog, notices a changed pin, fetches the newly pinned plugin snapshot, and the plugin's own session-start hook then downloads the matching release binary. Merging a pin bump here is the last human action; propagation from there is automatic.
+
 ## Installation
 
 **Dependencies:** `jq`, `semgrep`

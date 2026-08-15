@@ -1,0 +1,38 @@
+name: Bump yul pin
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Open PR pinning yul to its latest release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -eu
+          latest="$(gh release view --repo chains-project/yul --json tagName -q .tagName)"
+          current="$(sed -n 's/.*"ref": *"\([^"]*\)".*/\1/p' .claude-plugin/marketplace.json | head -n1)"
+          if [ "$latest" = "$current" ]; then
+            echo "catalog already pinned to ${latest}"
+            exit 0
+          fi
+          sed -i "s/\"ref\": *\"${current}\"/\"ref\": \"${latest}\"/" .claude-plugin/marketplace.json
+          grep -q "\"ref\": \"${latest}\"" .claude-plugin/marketplace.json
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          branch="bump-yul-${latest}"
+          git checkout -b "$branch"
+          git commit -am "Pin yul to ${latest}"
+          git push -u origin "$branch"
+          gh pr create \
+            --title "Pin yul to ${latest}" \
+            --body "Moves the catalog pin from ${current} to [yul ${latest}](https://github.com/chains-project/yul/releases/tag/${latest}). Merging this ships ${latest} to marketplace users."
